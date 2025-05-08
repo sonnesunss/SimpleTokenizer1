@@ -1,4 +1,4 @@
-use tokenizer::{Token, Tokenizer};
+use tokenizer::Tokenizer;
 
 mod tokenizer;
 

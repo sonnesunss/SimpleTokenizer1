@@ -12,7 +12,7 @@ pub enum Token {
     LParen,
     RParen,
     Error(String),
-    EOL,
+    //EOL,
 }
 
 #[allow(dead_code)]
@@ -20,7 +20,6 @@ pub enum Token {
 pub struct Tokenizer<'a> {
     input: &'a str,
     chars_iter: std::iter::Peekable<Chars<'a>>,
-    eol_emmited: bool,
 }
 
 #[allow(dead_code)]
@@ -29,7 +28,6 @@ impl<'a> Tokenizer<'a> {
         Tokenizer {
             input,
             chars_iter: input.chars().peekable(),
-            eol_emmited: false,
         }
     }
 
@@ -50,25 +48,24 @@ impl<'a> Tokenizer<'a> {
 
         // 非空白字符
         match self.chars_iter.next() {
-            Some(c) => Some(match c {
-                '+' => Token::Plus,
-                '-' => Token::Minus,
-                '*' => Token::Multiply,
-                '/' => Token::Divide,
-                '^' => Token::Power,
-                '(' => Token::LParen,
-                ')' => Token::RParen,
-                '0'..='9' => Token::Number(c.to_string().parse::<i32>().unwrap()),
-                _ => Token::Error("Unexpected char -> {c}".to_owned()),
-            }),
-            None => {
-                if !self.eol_emmited {
-                    self.eol_emmited = true;
-                    Some(Token::EOL)
-                } else {
-                    None
-                }
-            }
+            Some(c) => Some(
+                self.match_char(c)
+            ), 
+            None => None
+        }
+    }
+    
+    fn match_char(&self, c: char) -> Token {
+        match c {
+            '+' => Token::Plus,
+            '-' => Token::Minus,
+            '*' => Token::Multiply,
+            '/' => Token::Divide,
+            '^' => Token::Power,
+            '(' => Token::LParen,
+            ')' => Token::RParen,
+            '0'..='9' => Token::Number(c.to_string().parse::<i32>().unwrap()),
+            _ => Token::Error("Unexpected char -> {c}".to_owned()), 
         }
     }
 }
