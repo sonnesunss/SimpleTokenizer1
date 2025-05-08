@@ -54,7 +54,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    fn match_char(&self, c: char) -> Token {
+    fn match_char(&mut self, c: char) -> Token {
         match c {
             '+' => Token::Plus,
             '-' => Token::Minus,
@@ -63,7 +63,19 @@ impl<'a> Tokenizer<'a> {
             '^' => Token::Power,
             '(' => Token::LParen,
             ')' => Token::RParen,
-            '0'..='9' => Token::Number(c.to_string().parse::<i32>().unwrap()),
+            '0'..='9' => {
+                let mut num_str = c.to_string();
+                // 遇到char == digit时就peek下一个，如果还是digit，就next，然后循环一直到peek的下一个字符不是digit
+                while let Some(&next_c) = self.chars_iter.peek() {
+                    if next_c.is_ascii_digit() {
+                        num_str.push(next_c);
+                        self.chars_iter.next();
+                    } else {
+                        break
+                    }
+                }
+                Token::Number(num_str.parse::<i32>().unwrap())
+            }
             _ => Token::Error(format!("Unexpected char -> {}", c)),
         }
     }
@@ -87,7 +99,7 @@ mod tests {
 
     #[test]
     fn test_match_char_single_symbols() {
-        let tokenizer = Tokenizer::new("");
+        let mut tokenizer = Tokenizer::new("");
         assert_eq!(tokenizer.match_char('+'), Token::Plus);
         assert_eq!(tokenizer.match_char('-'), Token::Minus);
         assert_eq!(tokenizer.match_char('*'), Token::Multiply);
@@ -99,7 +111,7 @@ mod tests {
 
     #[test]
     fn test_match_char_digit() {
-        let tokenizer = Tokenizer::new("");
+        let mut tokenizer = Tokenizer::new("");
         assert_eq!(tokenizer.match_char('0'), Token::Number(0));
         assert_eq!(tokenizer.match_char('5'), Token::Number(5));
         assert_eq!(tokenizer.match_char('9'), Token::Number(9));
@@ -107,7 +119,7 @@ mod tests {
 
     #[test]
     fn test_match_char_unexpected() {
-        let tokenizer = Tokenizer::new("");
+        let mut tokenizer = Tokenizer::new("");
         let token = tokenizer.match_char('x');
         match token {
             Token::Error(msg) => assert!(msg.contains("x")),
@@ -152,6 +164,63 @@ mod tests {
     fn test_empty_input() {
         let mut tokenizer = Tokenizer::new("");
         assert_eq!(tokenizer.next_token(), None);
+    }
+
+    #[test]
+    fn test_match_char_single_digit() {
+        let mut tokenizer = Tokenizer::new("1");
+        tokenizer.chars_iter.next();
+        let token = tokenizer.match_char('1');
+        assert_eq!(token, Token::Number(1));
+    }
+
+    #[test]
+    fn test_match_char_multi_digit() {
+        let mut tokenizer = Tokenizer::new("1234");
+        // 手动先吃掉第一个字符，让 chars_iter 从 index 1 开始
+        tokenizer.chars_iter.next();
+        let token = tokenizer.match_char('1');
+        assert_eq!(token, Token::Number(1234));
+    }
+
+    #[test]
+    fn test_match_char_digit_followed_by_symbol() {
+        let mut tokenizer = Tokenizer::new("12+");
+        // 手动先吃掉第一个字符
+        tokenizer.chars_iter.next();
+        let token = tokenizer.match_char('1');
+        assert_eq!(token, Token::Number(12));
+        // 检查下一个字符是 '+'
+        assert_eq!(tokenizer.chars_iter.peek(), Some(&'+'));
+    }
+
+    #[test]
+    fn test_match_char_digit_followed_by_whitespace() {
+        let mut tokenizer = Tokenizer::new("456 ");
+        tokenizer.chars_iter.next();
+        let token = tokenizer.match_char('4');
+        assert_eq!(token, Token::Number(456));
+        // peek() 是空格
+        assert_eq!(tokenizer.chars_iter.peek(), Some(&' '));
+    }
+
+    #[test]
+    fn test_match_char_symbol() {
+        let mut tokenizer = Tokenizer::new("+");
+        tokenizer.chars_iter.next();
+        let token = tokenizer.match_char('+');
+        assert_eq!(token, Token::Plus);
+    }
+
+    #[test]
+    fn test_match_char_unexpected2() {
+        let mut tokenizer = Tokenizer::new("x");
+        tokenizer.chars_iter.next();
+        let token = tokenizer.match_char('x');
+        match token {
+            Token::Error(msg) => assert!(msg.contains("x")),
+            _ => panic!("Expected error token"),
+        }
     }
 }
 
